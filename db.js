@@ -1,0 +1,238 @@
+// 간단한 IndexedDB 래퍼. 오프라인에서도 동작하며 사진/PDF는 Blob으로 저장한다.
+const DB = (() => {
+  // index.html 맨 위 인라인 스크립트에서 정의한 window.TRIP_ID로 DB 이름을 만든다.
+  // 같은 GitHub Pages 도메인의 다른 여행 앱과 IndexedDB가 섞이지 않게 하는 핵심 값.
+  const DB_NAME = (window.TRIP_ID || "fukuoka-trip") + "-db";
+  const DB_VERSION = 3;
+  let dbPromise = null;
+
+  function open() {
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains("notes")) {
+          db.createObjectStore("notes"); // key: itemId, value: string
+        }
+        if (!db.objectStoreNames.contains("attachments")) {
+          const store = db.createObjectStore("attachments", { keyPath: "id" });
+          store.createIndex("byItem", "itemId", { unique: false });
+        }
+        if (!db.objectStoreNames.contains("checklist")) {
+          db.createObjectStore("checklist"); // key: 'list', value: array
+        }
+        if (!db.objectStoreNames.contains("geocache")) {
+          db.createObjectStore("geocache"); // key: mapQuery 문자열, value: {lat,lng,manual,failed,ts}
+        }
+        if (!db.objectStoreNames.contains("expenses")) {
+          db.createObjectStore("expenses"); // key: 'list', value: array (가계부, CSV 업로드 시 통째로 교체)
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return dbPromise;
+  }
+
+  async function tx(storeName, mode) {
+    const db = await open();
+    return db.transaction(storeName, mode).objectStore(storeName);
+  }
+
+  return {
+    async getNote(itemId) {
+      const store = await tx("notes", "readonly");
+      return new Promise((res, rej) => {
+        const r = store.get(itemId);
+        r.onsuccess = () => res(r.result || "");
+        r.onerror = () => rej(r.error);
+      });
+    },
+    async setNote(itemId, text) {
+      const store = await tx("notes", "readwrite");
+      return new Promise((res, rej) => {
+        const r = store.put(text, itemId);
+        r.onsuccess = () => res();
+        r.onerror = () => rej(r.error);
+      });
+    },
+    async addAttachment(itemId, file) {
+      const store = await tx("attachments", "readwrite");
+      const record = {
+        id: itemId + "_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+        itemId,
+        name: file.name,
+        type: file.type,
+        blob: file,
+        createdAt: Date.now()
+      };
+      return new Promise((res, rej) => {
+        const r = store.add(record);
+        r.onsuccess = () => res(record);
+        r.onerror = () => rej(r.error);
+      });
+    },
+    async getAttachments(itemId) {
+      const store = await tx("attachments", "readonly");
+      const idx = store.index("byItem");
+      return new Promise((res, rej) => {
+        const results = [];
+        const cursorReq = idx.openCursor(IDBKeyRange.only(itemId));
+        cursorReq.onsuccess = (e) => {
+          const cursor = e.target.result;
+          if (cursor) {
+            results.push(cursor.value);
+            cursor.continue();
+          } else {
+            results.sort((a, b) => a.createdAt - b.createdAt);
+            res(results);
+          }
+        };
+        cursorReq.onerror = () => rej(cursorReq.error);
+      });
+    },
+    async deleteAttachment(id) {
+      const store = await tx("attachments", "readwrite");
+      return new Promise((res, rej) => {
+        const r = store.delete(id);
+        r.onsuccess = () => res();
+        r.onerror = () => rej(r.error);
+      });
+    },
+    async getChecklist() {
+      const store = await tx("checklist", "readonly");
+      return new Promise((res, rej) => {
+        const r = store.get("list");
+        r.onsuccess = () => res(r.result || []);
+        r.onerror = () => rej(r.error);
+      });
+    },
+    async setChecklist(list) {
+      const store = await tx("checklist", "readwrite");
+      return new Promise((res, rej) => {
+        const r = store.put(list, "list");
+        r.onsuccess = () => res();
+        r.onerror = () => rej(r.error);
+      });
+    },
+    // ---- 백업/복원용 ----
+    async getAllNotes() {
+      const store = await tx("notes", "readonly");
+      return new Promise((res, rej) => {
+        const result = {};
+        const cursorReq = store.openCursor();
+        cursorReq.onsuccess = (e) => {
+          const cursor = e.target.result;
+          if (cursor) {
+            result[cursor.key] = cursor.value;
+            cursor.continue();
+          } else {
+            res(result);
+          }
+        };
+        cursorReq.onerror = () => rej(cursorReq.error);
+      });
+    },
+    async getAllAttachments() {
+      const store = await tx("attachments", "readonly");
+      return new Promise((res, rej) => {
+        const r = store.getAll();
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      });
+    },
+    async putAttachmentRaw(record) {
+      const store = await tx("attachments", "readwrite");
+      return new Promise((res, rej) => {
+        const r = store.put(record);
+        r.onsuccess = () => res();
+        r.onerror = () => rej(r.error);
+      });
+    },
+    // ---- 지도 지오코딩 캐시 ----
+    async getGeocode(query) {
+      const store = await tx("geocache", "readonly");
+      return new Promise((res, rej) => {
+        const r = store.get(query);
+        r.onsuccess = () => res(r.result || null);
+        r.onerror = () => rej(r.error);
+      });
+    },
+    async setGeocode(query, record) {
+      const store = await tx("geocache", "readwrite");
+      return new Promise((res, rej) => {
+        const r = store.put(record, query);
+        r.onsuccess = () => res();
+        r.onerror = () => rej(r.error);
+      });
+    },
+    // ---- 가계부 (CSV 업로드 시 전체 교체 방식) ----
+    async getExpenses() {
+      const store = await tx("expenses", "readonly");
+      return new Promise((res, rej) => {
+        const r = store.get("list");
+        r.onsuccess = () => res(r.result || null); // null이면 아직 시드 전 (data.js 값을 씀)
+        r.onerror = () => rej(r.error);
+      });
+    },
+    async replaceExpenses(list) {
+      const store = await tx("expenses", "readwrite");
+      return new Promise((res, rej) => {
+        const r = store.put(list, "list");
+        r.onsuccess = () => res();
+        r.onerror = () => rej(r.error);
+      });
+    },
+    // ---- 가계부 CSV 교체 전 자동 스냅샷 (D1, 최근 1~2개만 유지) ----
+    // "expenses" 스토어 안에 'snapshots'라는 별도 키로 저장(오브젝트 스토어 추가 없이 재사용, DB_VERSION 변경 불필요).
+    async getExpenseSnapshots() {
+      const store = await tx("expenses", "readonly");
+      return new Promise((res, rej) => {
+        const r = store.get("snapshots");
+        r.onsuccess = () => res(Array.isArray(r.result) ? r.result : []);
+        r.onerror = () => rej(r.error);
+      });
+    },
+    async pushExpenseSnapshot(list) {
+      const snapshots = await this.getExpenseSnapshots();
+      const next = [{ list, ts: Date.now() }, ...snapshots].slice(0, 2); // 최신 것을 앞에 두고 최대 2개까지만 유지, 오래된 것은 자동 폐기
+      const store = await tx("expenses", "readwrite");
+      return new Promise((res, rej) => {
+        const r = store.put(next, "snapshots");
+        r.onsuccess = () => res();
+        r.onerror = () => rej(r.error);
+      });
+    },
+    async popExpenseSnapshot() {
+      // 가장 최근 스냅샷을 꺼내 반환하고 목록에서 제거(되돌리기 1회 = 스냅샷 1개 소비)
+      const snapshots = await this.getExpenseSnapshots();
+      if (!snapshots.length) return null;
+      const [latest, ...rest] = snapshots;
+      const store = await tx("expenses", "readwrite");
+      await new Promise((res, rej) => {
+        const r = store.put(rest, "snapshots");
+        r.onsuccess = () => res();
+        r.onerror = () => rej(r.error);
+      });
+      return latest;
+    },
+    async getAllGeocodes() {
+      const store = await tx("geocache", "readonly");
+      return new Promise((res, rej) => {
+        const result = {};
+        const cursorReq = store.openCursor();
+        cursorReq.onsuccess = (e) => {
+          const cursor = e.target.result;
+          if (cursor) {
+            result[cursor.key] = cursor.value;
+            cursor.continue();
+          } else {
+            res(result);
+          }
+        };
+        cursorReq.onerror = () => rej(cursorReq.error);
+      });
+    }
+  };
+})();

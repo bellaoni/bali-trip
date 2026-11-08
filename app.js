@@ -172,8 +172,6 @@
       <div class="book-row"><span class="k">숙소명</span><span class="v">${TRIP.hotel.name}</span></div>
       <div class="book-row"><span class="k">체크인</span><span class="v">${TRIP.hotel.checkin}</span></div>
       <div class="book-row"><span class="k">체크아웃</span><span class="v">${TRIP.hotel.checkout}</span></div>
-      <div class="book-row"><span class="k">체크인</span><span class="v">2026-08-02</span></div>
-      <div class="book-row"><span class="k">체크아웃</span><span class="v">2026-08-04</span></div>
     </div>`;
 
     TRIP.flights.forEach((f) => {
@@ -357,6 +355,9 @@
     } else if (id === "ref-food-list") {
       renderFoodList();
       openCard("foodCard");
+    } else if (id === "ref-photo-spots") {
+      renderPhotoList();
+      openCard("photoCard");
     }
   }
   // ---------------- Visit Japan Web QR 카드 (준비물 아래 고정 퀵카드에서 오픈) ----------------
@@ -439,6 +440,7 @@
   }
   function renderShoppingList() { renderGroupedList(SHOPPING_LIST, "shoppingListBody"); }
   function renderFoodList() { renderGroupedList(FOOD_LIST, "foodListBody"); }
+  function renderPhotoList() { renderGroupedList(PHOTO_SPOTS, "photoListBody"); }
 
   // ---------------- 가계부 (나만 보기 전용) ----------------
   // 분류 로직: "내 이름이 splitWith에 들어 있는 항목만 내 몫"으로 계산한다.
@@ -1665,6 +1667,7 @@
   bindCardClose("storeCard");
   bindCardClose("shoppingCard");
   bindCardClose("foodCard");
+  bindCardClose("photoCard");
   bindCardClose("expenseCard");
 
   // ---------------- 아코디언 열림/닫힘 상태 기억 ----------------

@@ -61,9 +61,9 @@ const GEO_SEARCH_QUERY = {};
 const TRIP = {
   title: "Key of Rich in Bali",
   hotel: {
-    name: "",
-    checkin: "",
-    checkout: ""
+    name: "The Apurva Kempinski Bali",
+    checkin: "2026-11-11 00:00 (11/10 밤 도착)",
+    checkout: "2026-11-13 (11:00경 출발)"
   },
   // 개인 식별 정보(나의 이름): 하드코딩 대신 데이터 레이어(TRIP 객체)에서 관리(T03).
   // classifyExpense/myShare(app.js)에서 splitWith 판별에 사용.
@@ -71,23 +71,69 @@ const TRIP = {
   // 일차 목록 — index.html의 DAY 탭(#dayTabs)·지도 필터(#mapDayFilter)와 app.js의
   // mapMarkerLayers를 이 배열 기준으로 동적 생성하는 단일 소스(B3). 신규 여행이라 아직
   // 비어 있음 — 일정을 짜면서 { day: 1, date: "..." } 형태로 하나씩 채워나간다.
-  days: [],
-  flights: []
+  days: [
+    { day: 1, date: "11/10 (화)" },
+    { day: 2, date: "11/11 (수)" },
+    { day: 3, date: "11/12 (목)" },
+    { day: 4, date: "11/13 (금)" },
+    { day: 5, date: "11/14 (토)" },
+  ],
+  flights: [
+    { route: "부산(PUS) → 인천(ICN)", date: "2026-11-10 (화)", dep: "12:00", arr: "13:10", code: "KE1408" },
+    { route: "인천(ICN) → 발리(DPS)", date: "2026-11-10 (화)", dep: "16:20", arr: "22:25", code: "KE431" },
+    { route: "발리(DPS) → 인천(ICN)", date: "2026-11-13 (금)", dep: "23:50", arr: "07:45 (11/14 토)", code: "KE432" },
+    { route: "인천(ICN) → 부산(PUS)", date: "2026-11-14 (토)", dep: "09:40", arr: "10:50", code: "KE1403" },
+  ]
 };
 
 // 일정 아이템 (날짜별 타임라인에 표시될 장소/이벤트). 채워나가면서 추가.
 // 필드: id(문자열, 예: "d1-1") / day(숫자, 일차) / time("HH:MM") / tag(상단 enum 참고: normal/food/shop/sight/theme) /
 //   title(장소·이벤트명) / desc(한줄 설명, 빈 문자열 가능) / mapQuery(지도 검색어) / remark(비고, 빈 문자열 가능)
 // 예: { id: "d1-1", day: 1, time: "09:00", tag: "normal", title: "호텔 체크인", desc: "", mapQuery: "○○호텔", remark: "" }
-const ITEMS = [];
+const ITEMS = [
+  {"id": "d1-1", "day": 1, "time": "12:00", "tag": "normal", "title": "✈️ 부산(PUS) → 인천(ICN)", "desc": "항공 12:00 출발 · 13:10 도착", "mapQuery": "Gimhae International Airport", "remark": ""},
+  {"id": "d1-2", "day": 1, "time": "13:10", "tag": "normal", "title": "인천국제공항 수속·대기", "desc": "13:10 – 16:20", "mapQuery": "Incheon International Airport", "remark": ""},
+  {"id": "d1-3", "day": 1, "time": "16:20", "tag": "normal", "title": "✈️ 인천(ICN) → 발리(DPS)", "desc": "항공 16:20 출발 · 22:25 도착", "mapQuery": "Incheon International Airport", "remark": ""},
+  {"id": "d1-4", "day": 1, "time": "22:25", "tag": "normal", "title": "발리 국제공항 입국", "desc": "입국 수속 및 이동 준비 (22:25 – 23:30)", "mapQuery": "Ngurah Rai International Airport", "remark": ""},
+  {"id": "d1-5", "day": 1, "time": "23:30", "tag": "normal", "title": "🚌 발리공항 → 호텔", "desc": "차량 이동 (23:30 – 00:00)", "mapQuery": "", "remark": ""},
+  {"id": "d1-6", "day": 1, "time": "00:00", "tag": "normal", "title": "호텔 체크인", "desc": "00:00 – 00:30 체크인 후 투숙·휴식", "mapQuery": "The Apurva Kempinski Bali", "remark": ""},
+  {"id": "d2-1", "day": 2, "time": "09:00", "tag": "normal", "title": "호텔 조식·자유시간", "desc": "09:00 – 11:30", "mapQuery": "", "remark": ""},
+  {"id": "d2-2", "day": 2, "time": "11:30", "tag": "normal", "title": "🚌 호텔 → 발리컬렉션", "desc": "차량 이동 (11:30 – 12:00)", "mapQuery": "", "remark": "장기자랑팀: 별도 차량 B조 이동/리허설"},
+  {"id": "d2-3", "day": 2, "time": "12:00", "tag": "shop", "title": "발리컬렉션 자유일정", "desc": "12:00 – 13:00", "mapQuery": "Bali Collection Nusa Dua", "remark": ""},
+  {"id": "d2-4", "day": 2, "time": "13:00", "tag": "food", "title": "중식: 르 블루 누사두아", "desc": "13:00 – 14:00", "mapQuery": "Le Bleu Nusa Dua", "remark": "4인 1세트"},
+  {"id": "d2-5", "day": 2, "time": "14:00", "tag": "normal", "title": "🚌 발리컬렉션 → 호텔", "desc": "차량 이동 (14:00 – 14:30)", "mapQuery": "", "remark": ""},
+  {"id": "d2-6", "day": 2, "time": "14:30", "tag": "normal", "title": "호텔 자유일정", "desc": "14:30 – 18:00", "mapQuery": "", "remark": ""},
+  {"id": "d2-7", "day": 2, "time": "18:00", "tag": "theme", "title": "갈라디너 연회 & 디너", "desc": "18:00 – 22:00 · 칸디볼룸", "mapQuery": "The Apurva Kempinski Bali", "remark": "장소: The Apurva Kempinski Bali – 칸디볼룸"},
+  {"id": "d2-8", "day": 2, "time": "22:00", "tag": "normal", "title": "호텔 투숙·휴식", "desc": "", "mapQuery": "", "remark": ""},
+  {"id": "d3-1", "day": 3, "time": "09:00", "tag": "normal", "title": "호텔 조식·자유시간", "desc": "09:00 – 11:00", "mapQuery": "", "remark": ""},
+  {"id": "d3-2", "day": 3, "time": "11:00", "tag": "normal", "title": "🚌 호텔 → 아이콘발리", "desc": "차량 이동 (11:00 – 12:30)", "mapQuery": "", "remark": ""},
+  {"id": "d3-3", "day": 3, "time": "12:30", "tag": "shop", "title": "아이콘발리 자유일정·자율 식사", "desc": "12:30 – 14:30", "mapQuery": "ICON Bali Mall Sanur", "remark": "경비 100만 루피아 현금 제공 · 추천 식당/카페/쇼핑/포토스팟은 체크리스트 탭 참고정보 카드"},
+  {"id": "d3-4", "day": 3, "time": "14:30", "tag": "normal", "title": "🚌 아이콘발리 → 핀스 비치클럽", "desc": "차량 이동 (14:30 – 17:00)", "mapQuery": "", "remark": ""},
+  {"id": "d3-5", "day": 3, "time": "17:00", "tag": "food", "title": "핀스 비치클럽 자유일정·석식", "desc": "17:00 – 21:30 (약 4시간)", "mapQuery": "FINNS Beach Club Bali", "remark": ""},
+  {"id": "d3-6", "day": 3, "time": "21:30", "tag": "normal", "title": "🚌 핀스 비치클럽 → 호텔", "desc": "차량 이동 (21:30 – 23:00)", "mapQuery": "", "remark": ""},
+  {"id": "d3-7", "day": 3, "time": "23:00", "tag": "normal", "title": "호텔 투숙·휴식", "desc": "", "mapQuery": "", "remark": ""},
+  {"id": "d4-1", "day": 4, "time": "09:00", "tag": "normal", "title": "호텔 조식·자유시간", "desc": "09:00 – 11:00", "mapQuery": "", "remark": ""},
+  {"id": "d4-2", "day": 4, "time": "11:00", "tag": "normal", "title": "🚌 체크아웃 → 점심 식당", "desc": "차량 이동 (11:00 – 12:00)", "mapQuery": "", "remark": ""},
+  {"id": "d4-3", "day": 4, "time": "12:00", "tag": "food", "title": "중식: 쿠카 레스토랑", "desc": "12:00 – 13:00", "mapQuery": "Kuuk Restaurant Bali", "remark": "2인 1세트 / 1등: 더 케이브 레스토랑"},
+  {"id": "d4-4", "day": 4, "time": "13:00", "tag": "normal", "title": "🚌 식당 → 주메이라 발리", "desc": "차량 이동 (13:00 – 14:00)", "mapQuery": "", "remark": ""},
+  {"id": "d4-5", "day": 4, "time": "14:00", "tag": "normal", "title": "주메이라 발리 · Maja Sunset Lounge", "desc": "14:00 – 15:00", "mapQuery": "Jumeirah Bali", "remark": "각 조장만 인스펙션 진행 (24명 / 약 15분)"},
+  {"id": "d4-6", "day": 4, "time": "15:00", "tag": "normal", "title": "🚌 마사지샵 이동", "desc": "차량 이동 (15:00 – 16:00)", "mapQuery": "", "remark": "버스 배정 재조정 예정"},
+  {"id": "d4-7", "day": 4, "time": "16:00", "tag": "normal", "title": "마사지 및 샤워", "desc": "16:00 – 17:30", "mapQuery": "", "remark": ""},
+  {"id": "d4-8", "day": 4, "time": "17:30", "tag": "normal", "title": "🚌 마사지샵 → 식당", "desc": "차량 이동 (17:30 – 18:30)", "mapQuery": "", "remark": ""},
+  {"id": "d4-9", "day": 4, "time": "18:30", "tag": "food", "title": "석식: 순다라 레스토랑", "desc": "18:30 – 20:30", "mapQuery": "Sundara Beach Club Jimbaran", "remark": "10인 1테이블"},
+  {"id": "d4-10", "day": 4, "time": "20:30", "tag": "normal", "title": "🚌 식당 → 공항", "desc": "차량 이동 (20:30 – 21:00)", "mapQuery": "", "remark": ""},
+  {"id": "d4-11", "day": 4, "time": "21:00", "tag": "normal", "title": "발리 국제공항 출국 수속", "desc": "21:00 – 23:50", "mapQuery": "Ngurah Rai International Airport", "remark": ""},
+  {"id": "d4-12", "day": 4, "time": "23:50", "tag": "normal", "title": "✈️ 발리(DPS) → 인천(ICN)", "desc": "항공 23:50 출발 · 11/14(토) 07:45 도착", "mapQuery": "", "remark": ""},
+  {"id": "d5-1", "day": 5, "time": "07:45", "tag": "normal", "title": "인천국제공항 수속·대기", "desc": "07:45 – 09:40", "mapQuery": "Incheon International Airport", "remark": ""},
+  {"id": "d5-2", "day": 5, "time": "09:40", "tag": "normal", "title": "✈️ 인천(ICN) → 부산(PUS)", "desc": "항공 09:40 출발 · 10:50 도착", "mapQuery": "Gimhae International Airport", "remark": ""},
+];
 
 // 체크리스트 탭 "참고정보" 섹션에 노출되는 항목 (탭하면 고정 카드 팝업이 열림)
 const REFERENCE_ITEMS = [
   { id: "ref-japanese-phrases", title: "🗣️ 자주 쓰는 일본어" },
-  { id: "ref-shopping-list", title: "🛒 쇼핑리스트" },
-  { id: "ref-food-list", title: "🍜 꼭 먹어야 할 음식" },
+  { id: "ref-food-list", title: "🍽️ 추천 식당·카페" },
   { id: "ref-shopping-stores", title: "🛍️ 쇼핑 추천 매장" },
-  { id: "ref-airport-station", title: "✈️ 덴파사르 공항 ↔ 시내 이동" },
+  { id: "ref-photo-spots", title: "📸 포토 스팟" },
 ];
 
 // "자주쓰는 일본어" 카드에 노출되는 표현 목록 (category별로 묶어 표시)
@@ -98,7 +144,22 @@ const JAPANESE_PHRASES = [];
 // ---------------- 참고정보: 쇼핑 추천 매장 (표) ----------------
 // 필드명은 다른 여행에서도 그대로 재사용 가능하도록 통일함: name/area/hours/recommend/mapQuery
 // (image 필드는 2026-07-26 결정으로 제거됨 — 매장 사진은 소싱하지 않는다. changelog 참고)
-const SHOPPING_STORES = [];
+const SHOPPING_STORES = [
+  {
+    "name": "Krisna Premium",
+    "area": "아이콘 발리",
+    "hours": "",
+    "recommend": "기념품·특산품 (현장 확인)",
+    "mapQuery": "Krisna Premium Icon Bali Sanur"
+  },
+  {
+    "name": "Sensatia Botanicals",
+    "area": "아이콘 발리",
+    "hours": "",
+    "recommend": "천연 스킨케어·바디 제품",
+    "mapQuery": "Sensatia Botanicals Icon Bali Sanur"
+  }
+];
 
 // ---------------- 참고정보: 쇼핑리스트 / 꼭 먹어야 할 음식 공통 데이터 구조 ----------------
 // group: 그룹 제목(이모지 포함) / items: { title, desc(한줄 설명), mapQuery } 배열
@@ -148,4 +209,69 @@ const TRIP_FEATURES = { visitJapan: false, japanesePhrases: false };
 const EXPENSES = [];
 
 // ---------------- 참고정보: 꼭 먹어야 할 음식 (간식은 구매처별로 분류) ----------------
-const FOOD_LIST = [];
+const FOOD_LIST = [
+  {
+    "group": "🍽️ 식당",
+    "items": [
+      {
+        "title": "Sand Beach",
+        "desc": "아이콘 발리 추천 (식당·카페 겸용)",
+        "mapQuery": "Sand Beach Icon Bali Sanur"
+      },
+      {
+        "title": "Bubba Gump",
+        "desc": "아이콘 발리 · 해산물 중심 미국식 레스토랑",
+        "mapQuery": "Bubba Gump Icon Bali Sanur"
+      },
+      {
+        "title": "L’Osteria",
+        "desc": "아이콘 발리 · 이탈리안 피자·파스타",
+        "mapQuery": "L'Osteria Icon Bali Sanur"
+      }
+    ]
+  },
+  {
+    "group": "☕ 카페",
+    "items": [
+      {
+        "title": "Fold Sanur",
+        "desc": "사누르 카페",
+        "mapQuery": "Fold Sanur Bali"
+      },
+      {
+        "title": "Sand Beach",
+        "desc": "아이콘 발리 추천 (식당·카페 겸용)",
+        "mapQuery": "Sand Beach Icon Bali Sanur"
+      },
+      {
+        "title": "Tukies Coconut Shop",
+        "desc": "코코넛 제품 숍·카페",
+        "mapQuery": "Tukies Coconut Shop Icon Bali Sanur"
+      }
+    ]
+  }
+];
+
+// ---------------- 참고정보: 포토 스팟 (FOOD_LIST와 같은 구조) ----------------
+const PHOTO_SPOTS = [
+  {
+    "group": "📸 포토 스팟",
+    "items": [
+      {
+        "title": "사누르 해변 산책로",
+        "desc": "사누르 · 해변 따라 걷는 산책로",
+        "mapQuery": "Sanur Beach Promenade Bali"
+      },
+      {
+        "title": "아이콘 발리 메인 입구",
+        "desc": "아이콘 발리 몰 입구",
+        "mapQuery": "ICON Bali Mall Sanur"
+      },
+      {
+        "title": "버티컬 포레스트",
+        "desc": "아이콘 발리 · 건물 외벽 식물 조경",
+        "mapQuery": "Vertical Forest Icon Bali Sanur"
+      }
+    ]
+  }
+];

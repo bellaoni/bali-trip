@@ -128,8 +128,10 @@
             <div class="rate-cell"><input type="number" id="expRate" inputmode="decimal" step="any" min="0" placeholder="1통화당 원화"><button type="button" class="btn-ghost small" id="expRateFetch" title="최신 환율 불러오기">조회</button></div>
             <select id="expDay" aria-label="일차"></select>
             <p class="hint-text span2" id="expRateNote" hidden></p>
-            <input type="text" id="expCategory" list="expCategoryOptions" placeholder="카테고리">
-            <datalist id="expCategoryOptions"></datalist>
+            <div class="cat-cell">
+              <input type="text" id="expCategory" placeholder="카테고리 (직접 입력)" autocomplete="off">
+              <select id="expCategorySel" aria-label="카테고리 목록에서 선택"></select>
+            </div>
             <input type="text" id="expSplitWith" placeholder="함께 나눌 사람 (쉼표 구분, 비우면 나 혼자)">
             <div class="expense-form-actions">
               <button type="submit" class="btn-primary small" id="expSubmitBtn">추가</button>

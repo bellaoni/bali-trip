@@ -465,12 +465,44 @@
   }
   function fmtKRW(n) { return formatMoney(Math.round(n), "KRW"); }
   function fmtOriginal(e) { return formatMoney(e.amount, e.currency); }
+  function buildOtherExpensesHtml(otherRows) {
+    if (!otherRows.length) return "";
+    let lastDay = null;
+    const body = otherRows.map(e => {
+      let dayHeader = "";
+      if (e.day !== lastDay) {
+        dayHeader = `<tr class="phrase-cat"><td colspan="4">${escapeHtml(e.day)}</td></tr>`;
+        lastDay = e.day;
+      }
+      const krw = e.amount * e.krwRate;
+      return `${dayHeader}
+        <tr>
+          <td>${escapeHtml(e.item)}${e.category ? `<br><span class="expense-share-note">${escapeHtml(e.category)}</span>` : ""}</td>
+          <td>${fmtOriginal(e)}${e.currency !== "KRW" ? `<br>(${fmtKRW(krw)})` : ""}</td>
+          <td><span class="expense-badge expense-badge-others">타인</span><br><span class="expense-share-note">${escapeHtml(e.splitWith.join(", "))}</span></td>
+          <td class="expense-actions"><button type="button" class="expense-act" data-exp-edit="${e.idx}" aria-label="수정">✏️</button><button type="button" class="expense-act" data-exp-del="${e.idx}" aria-label="삭제">🗑️</button></td>
+        </tr>`;
+    }).join("");
+    return `
+      <details class="accordion accordion-nested expense-others" open>
+        <summary><span>👥 타인 경비 (내 합계 미포함)</span><span class="expense-cat-total">${otherRows.length}건</span></summary>
+        <div class="accordion-body">
+          <p class="expense-share-note">내 이름이 아닌 한 사람만 적은 항목이에요. 내 지출·공동경비 합계에는 포함되지 않아요. 이름을 잘못 적었다면 ✏️로 고쳐 주세요.</p>
+          <table class="phrase-table expense-table">
+            <thead><tr><th>항목명</th><th>금액</th><th>구분</th><th></th></tr></thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
+      </details>`;
+  }
   function renderExpenses() {
     refreshExpenseFormOptions();
-    const rows = currentExpenses
-      .map((e, idx) => ({ ...e, idx, type: classifyExpense(e) }))
+    const allRows = currentExpenses.map((e, idx) => ({ ...e, idx, type: classifyExpense(e) }));
+    const rows = allRows
       .filter(e => e.type !== "excluded")
       .map(e => ({ ...e, krw: e.amount * e.krwRate, share: myShare(e, e.type) }));
+    // 내 이름이 아닌 한 사람만 적은 "타인 경비"는 합계에서는 빼되, 저장 여부를 확인하고 고칠 수 있게 목록에는 따로 보여준다.
+    const otherRows = allRows.filter(e => e.type === "excluded");
 
     const totalMine = rows.reduce((sum, e) => sum + e.share, 0);
     const totalShared = rows.filter(e => e.type === "shared").reduce((sum, e) => sum + e.krw, 0);
@@ -523,7 +555,7 @@
               </table>
             </div>
           </details>`;
-      }).join("");
+      }).join("") + buildOtherExpensesHtml(otherRows);
     }
   }
   document.getElementById("expenseDetailBtn")?.addEventListener("click", () => {
@@ -688,10 +720,21 @@
       daySel.innerHTML = opts.map(d => `<option value="${d}">${d}</option>`).join("");
       daySel.value = opts.includes("1일차") ? "1일차" : opts[0];
     }
-    const dl = document.getElementById("expCategoryOptions");
-    if (dl) {
+    // 카테고리: 직접 입력(텍스트) + 목록에서 고르기(드롭다운) 둘 다 가능. 목록 = data.js EXPENSE_CATEGORIES + 지금까지 쓴 카테고리.
+    const catSel = document.getElementById("expCategorySel");
+    if (catSel) {
       const cats = Array.from(new Set([...EXP_CATEGORIES, ...currentExpenses.map(e => e.category).filter(Boolean)]));
-      dl.innerHTML = cats.map(c => `<option value="${escapeHtml(c)}"></option>`).join("");
+      catSel.innerHTML = `<option value="">▾ 목록</option>` + cats.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+      catSel.value = "";
+      if (!catSel.dataset.bound) {
+        catSel.dataset.bound = "1";
+        catSel.addEventListener("change", () => {
+          if (catSel.value) {
+            document.getElementById("expCategory").value = catSel.value;
+            catSel.value = "";
+          }
+        });
+      }
     }
   }
   function resetExpenseForm() {

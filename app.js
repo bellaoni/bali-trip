@@ -441,14 +441,19 @@
   function renderFoodList() { renderGroupedList(FOOD_LIST, "foodListBody"); }
 
   // ---------------- 가계부 (나만 보기 전용) ----------------
-  // 분류 로직: splitWith 인원수 > 1 → 공동경비(내 몫 = 금액/인원수)
-  //           splitWith 인원수 = 1 & 그 사람이 나 → 개인경비(전액)
-  //           splitWith 인원수 = 1 & 그 사람이 내가 아님 → 내 가계부에서 제외
+  // 분류 로직: "내 이름이 splitWith에 들어 있는 항목만 내 몫"으로 계산한다.
+  //           내 이름 포함 & 인원수 > 1 → 공동경비(내 몫 = 금액/인원수)
+  //           내 이름 포함 & 인원수 = 1 → 개인경비(전액)
+  //           내 이름 없음(타인 단독·제3자끼리의 공동 포함) → 내 합계에서 제외, "타인 경비" 그룹에 표시
+  // 이름 비교는 공백을 제거한 완전 일치. 내 이름이 비어 있으면 어떤 항목도 내 몫이 아니다.
+  function normName(s) { return String(s || "").replace(/\s+/g, ""); }
+  function includesMe(e) {
+    const me = normName(getMeName());
+    return !!me && e.splitWith.some(n => normName(n) === me);
+  }
   function classifyExpense(e) {
-    const n = e.splitWith.length;
-    if (n > 1) return "shared";
-    if (n === 1 && e.splitWith[0] === getMeName()) return "personal";
-    return "excluded";
+    if (!includesMe(e)) return "excluded";
+    return e.splitWith.length > 1 ? "shared" : "personal";
   }
   function myShare(e, type) {
     const krw = e.amount * e.krwRate;
@@ -487,7 +492,7 @@
       <details class="accordion accordion-nested expense-others" open>
         <summary><span>👥 타인 경비 (내 합계 미포함)</span><span class="expense-cat-total">${otherRows.length}건</span></summary>
         <div class="accordion-body">
-          <p class="expense-share-note">내 이름이 아닌 한 사람만 적은 항목이에요. 내 지출·공동경비 합계에는 포함되지 않아요. 이름을 잘못 적었다면 ✏️로 고쳐 주세요.</p>
+          <p class="expense-share-note">내 이름이 들어 있지 않은 항목이에요(다른 사람 단독 경비, 또는 나 없이 나눈 공동 항목). 내 지출·공동경비 합계에는 포함되지 않아요. 이름을 잘못 적었다면 ✏️로 고쳐 주세요.</p>
           <table class="phrase-table expense-table">
             <thead><tr><th>항목명</th><th>금액</th><th>구분</th><th></th></tr></thead>
             <tbody>${body}</tbody>
@@ -501,7 +506,7 @@
     const rows = allRows
       .filter(e => e.type !== "excluded")
       .map(e => ({ ...e, krw: e.amount * e.krwRate, share: myShare(e, e.type) }));
-    // 내 이름이 아닌 한 사람만 적은 "타인 경비"는 합계에서는 빼되, 저장 여부를 확인하고 고칠 수 있게 목록에는 따로 보여준다.
+    // 내 이름이 없는 "타인 경비"는 합계에서는 빼되, 저장 여부를 확인하고 고칠 수 있게 목록에는 따로 보여준다.
     const otherRows = allRows.filter(e => e.type === "excluded");
 
     const totalMine = rows.reduce((sum, e) => sum + e.share, 0);
